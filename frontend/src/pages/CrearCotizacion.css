@@ -1,0 +1,381 @@
+/* CONTENEDOR GENERAL */
+.crear-root {
+  min-height: 100vh;
+  background: linear-gradient(to bottom right, #e8f0ff, #f5faff);
+  padding: 32px 16px 40px;
+}
+
+/* ENCABEZADO SUPERIOR */
+.crear-header {
+  max-width: 1300px;
+  margin: 0 auto 24px auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.btn-volver {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  color: #111827;
+}
+
+.btn-volver:hover {
+  background: #f3f4f6;
+}
+
+.crear-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0 0 2px 0;
+}
+
+.crear-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* FORMULARIO PRINCIPAL */
+.crear-form {
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+/* TARJETAS */
+.crear-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 22px 26px 24px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  margin-bottom: 26px;
+}
+
+.card-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+}
+
+/* CAMPOS */
+.field {
+  margin-bottom: 14px;
+}
+
+.field label {
+  display: block;
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  padding: 9px 12px;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.field input:focus,
+.field textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+}
+
+.card-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.items-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; 
+  margin-bottom: 14px;
+}
+
+/* AJUSTE FINO DE ALTURA DEL BOTÓN */
+.btn-add-item {
+  transform: translateY(-3px); /* súbelo */
+}
+
+/* BOTÓN AGREGAR ITEM (ARRIBA A LA DERECHA) */
+.btn-add-item {
+  background: #16a34a;
+  color: white;
+  padding: 8px 18px;      /* tamaño del botón */
+  border-radius: 8px;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: auto !important;   /* FORZAR tamaño real del botón */
+  max-width: fit-content;   /* evita que se expanda */
+}
+
+/* TABLA ÍTEMS */
+.table-container {
+  overflow-x: auto;
+}
+
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.items-table th,
+.items-table td {
+  border: 1px solid #e2e8f0;
+  padding: 8px 10px;
+  background: #ffffff;
+}
+
+.items-table td {
+  vertical-align: middle;
+  overflow: hidden;
+}
+
+.items-table th {
+  background: #f1f5f9;
+  font-weight: 600;
+  text-align: left;
+}
+
+.items-table input {
+  height: 32px;
+  padding: 4px 8px;
+}
+
+.items-table input[type="number"] {
+  height: 28px;
+  padding: 2px 6px;
+  font-size: 12.5px;
+}
+
+.items-table input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.15);
+}
+
+.items-table select {
+  width: 100%;
+  height: 32px;                 /* ⬅️ igual que input */
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 4px 22px 4px 8px;    /* ⬅️ menos padding */
+  font-size: 13px;
+  font-family: inherit;
+  background-color: #ffffff;
+  box-sizing: border-box;
+  line-height: 1.2;
+
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 20' fill='%236b7280' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 12px;
+}
+
+.items-table input,
+.items-table select {
+  height: 28px;                 /* más bajo */
+  padding: 2px 22px 2px 6px;    /* menos relleno */
+  font-size: 12.5px;            /* apenas más pequeño */
+}
+
+/* Focus igual a inputs */
+.items-table select:focus {
+  border-color: rgba(37, 99, 235, 0.15);
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.15);
+  outline: none;
+}
+
+/* columnas numéricas / item / borrar */
+.col-item {
+  width: 50px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.col-unidad {
+  width: 80px;
+}
+
+.col-number {
+  width: 90px;
+}
+
+.col-delete {
+  width: 40px;
+  text-align: center;
+}
+
+.col-unidad,
+.col-number {
+  text-align: center;
+}
+
+.col-unidad select,
+.col-number input {
+  margin: 0 auto;
+}
+
+/* TOTALES */
+.tfoot-label {
+  text-align: right;
+  font-weight: 600;
+  padding-right: 10px;
+}
+
+.money {
+  text-align: right;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.total-blue {
+  color: #2563eb;
+}
+
+/* BOTÓN ELIMINAR ÍTEM (X) */
+.btn-delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  color: #9ca3af;
+}
+
+.btn-delete:hover {
+  color: #ef4444;
+}
+
+/* FILA GUARDAR / CANCELAR */
+.save-row {
+  max-width: 1300px;
+  margin: 6px auto 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* BOTÓN CANCELAR */
+.btn-cancel {
+  background: rgb(24, 10, 10);
+  border: 1px solid #d1d5db;
+  padding: 10px 18px;       /* más pequeño y estilizado */
+  border-radius: 10px;
+  font-size: 15px;
+  cursor: pointer;
+  width: 250px;             /* igual que guardar */
+}
+
+/* BOTÓN GUARDAR COTIZACIÓN */
+.btn-save {
+  background: #2563eb;
+  color: white;
+  padding: 10px 18px;       /* más pequeño */
+  border-radius: 10px;
+  font-size: 15px;          /* antes 16px */
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  width: 250px;             /* tamaño igual al de cancelar */
+}
+
+.btn-save:hover {
+  background: #1e40af;
+}
+
+/* ===========================
+   AUI OPCIONAL
+=========================== */
+
+/* Checkbox AUI */
+.aui-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+
+.aui-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #2563eb; /* azul bonito */
+  cursor: pointer;
+}
+
+/* Grid de AUI (3 columnas) */
+.card-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 10px;
+  animation: fadeInAUI 0.2s ease-in-out;
+}
+
+@keyframes fadeInAUI {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* Quitar flechas de input number (CRÍTICO) */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  appearance: textfield;        /* estándar */
+  -webkit-appearance: none;     /* Chrome / Edge / Safari */
+  -moz-appearance: textfield;   /* Firefox */
+}
+
+.items-table td {
+  vertical-align: middle;
+}
+
+.items-table td > input,
+.items-table td > select {
+  display: block;
+  margin: 0 auto;   /* ⬅️ centra horizontal */
+}

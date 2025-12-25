@@ -1,0 +1,84 @@
+/* Fondo general del login */
+.login-container {
+  height: 100vh;
+  background: linear-gradient(to bottom right, #e8f0ff, #f5faff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* Tarjeta */
+.login-card {
+  width: 420px;
+  background: white;
+  padding: 38px 40px;
+  border-radius: 18px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.12);
+  text-align: center;
+}
+
+/* Logo */
+.login-logo {
+  width: 155px;
+  margin: 0 auto 6px auto;
+  display: block;
+}
+
+/* Títulos */
+.login-title {
+  font-size: 26px;
+  font-weight: 800;
+  margin: 8px 0 2px 0;
+  color: #1e3a8a;
+}
+
+.login-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 25px;
+}
+
+/* Inputs */
+form label {
+  font-size: 14px;
+  font-weight: 600;
+  display: block;
+  text-align: left;
+  margin-bottom: 6px;
+}
+
+form input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 18px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* Botón */
+form button {
+  width: 100%;
+  background: #1a54dd;
+  color: white;
+  padding: 13px 0;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+
+form button:hover {
+  background: #0f3bb5;
+}
+
+/* Responsivo */
+@media (max-width: 500px) {
+  .login-card {
+    width: 100%;
+    padding: 30px 25px;
+  }
+}

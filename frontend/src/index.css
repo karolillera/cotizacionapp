@@ -1,0 +1,65 @@
+/* ============================
+   TEMA GLOBAL - SELTEL APP
+   Tipografía Inter + diseño limpio
+=============================== */
+
+/* Importamos Inter */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* Reset + Tipografía */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif !important;
+}
+
+/* Fondo global tipo Tailwind */
+html, body {
+  min-height: 100%;
+  background: #f0f4ff; /* azul suave */
+  color: #111827;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Links */
+a {
+  color: #1d4ed8;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* Botones base estilo ShadCN */
+button {
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+/* Input estándar */
+input, textarea, select {
+  font-family: inherit;
+  font-size: 15px;
+}
+
+/* Contenedores estándar */
+.container {
+  max-width: 1350px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Scrollbar suave */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
