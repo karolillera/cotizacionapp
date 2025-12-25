@@ -242,7 +242,7 @@ export default function CrearCotizacion() {
       }
 
       const res = await createCotizacion(payload);
-      alert("Cotización guardada correctamente");
+      alert("Cotización guardada correctamente, hola a todos");
       navigate(`/ver-cotizacion/${res.id_cotizacion}`);
 
     } catch (error) {
