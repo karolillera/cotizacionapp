@@ -1,19 +1,43 @@
-﻿const fs = require("fs");
+﻿/**
+ * Archivo: pdfGenerator.js
+ * Descripción: Módulo encargado de generar el archivo PDF de una cotización.
+ *              Obtiene la información de la base de datos, construye el
+ *              contenido del documento, organiza la tabla de ítems y totales,
+ *              aplica la plantilla corporativa y guarda el PDF final en las
+ *              rutas establecidas del sistema.
+ * Autor: Karol Illera
+ */
+
+const fs = require("fs");
 const path = require("path");
 const PDFKit = require("pdfkit");
-const { PDFDocument } = require("pdf-lib");
+const { PDFDocument, rgb } = require("pdf-lib");
 const db = require("../db");
+
+const BASE_COTIZACIONES_EMMA = "/seltel/compartida/EMMA Agent/Cotizaciones";
+const BASE_COTIZACIONES_GENERAL = "/seltel/compartida/Cotizaciones";
+
+const PAGE_CONTENT_START = 120;
+const PAGE_CONTENT_END = 720;
 
 // =======================
 //  Formato DINERO
 // =======================
 function formatMoney(value) {
   return Number(value || 0).toLocaleString("es-CO", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 }
 
+function formatCantidad(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  return n.toLocaleString("es-CO", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
 
 
 // =======================
@@ -39,29 +63,6 @@ function wrapText(doc, text, maxWidth) {
   if (currentLine.length > 0) lines.push(currentLine);
   return lines;
 }
-
-
-
-// =======================
-//  Generar número AAMMCC
-// =======================
-async function generarNumero() {
-  const r = await db.query(`
-    SELECT COUNT(*) AS total
-    FROM cotizaciones
-    WHERE fecha >= date_trunc('month', NOW())
-      AND fecha < (date_trunc('month', NOW()) + interval '1 month')
-  `);
-
-  const consecutivo = Number(r.rows[0].total) + 1;
-  const now = new Date();
-  const aa = String(now.getFullYear()).slice(2);
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const cc = String(consecutivo).padStart(2, "0");
-
-  return `${aa}${mm}${cc}`;
-}
-
 
 
 // =======================
@@ -107,7 +108,7 @@ function drawTableHeader(doc, state, startY) {
   }
 
   // Texto
-  doc.font("Helvetica-Bold").fontSize(9.2);
+  doc.font("Helvetica-Bold").fontSize(10);
   for (let c = 0; c < col.length; c++) {
     doc.text(headerTexts[c], xPositions[c], headerTopY + 5, {
       width: col[c],
@@ -118,12 +119,40 @@ function drawTableHeader(doc, state, startY) {
   return headerBottomY;
 }
 
+function guardarPDFEnRuta(basePath, fechaCotizacion, numero, referencia, bytes) {
+  const año = fechaCotizacion.getFullYear();
 
+  const mesNumero = String(fechaCotizacion.getMonth() + 1).padStart(2, "0");
+  const meses = [
+    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+  ];
+  const mesNombre = meses[fechaCotizacion.getMonth()];
+
+  const destino = path.join(
+    basePath,
+    String(año),
+    `${mesNumero}_${mesNombre}`
+  );
+
+  if (!fs.existsSync(destino)) {
+    fs.mkdirSync(destino, { recursive: true });
+  }
+
+  const referenciaLimpia = (referencia || "SIN_REFERENCIA")
+    .replace(/[<>:"/\\|?*]/g, "_");
+
+  const filePath = path.join(destino, `${numero} ${referenciaLimpia}.pdf`);
+
+  fs.writeFileSync(filePath, bytes);
+
+  return filePath;
+}
 
 // =======================
 //  Generar PDF
 // =======================
-async function generarPDF(idCotizacion) {
+async function generarPDF(idCotizacion, { force = false } = {}) {
   try {
     const cotRes = await db.query(
       "SELECT * FROM cotizaciones WHERE id_cotizacion=$1",
@@ -133,21 +162,37 @@ async function generarPDF(idCotizacion) {
     const cot = cotRes.rows[0];
     if (!cot) throw new Error("Cotización no existe.");
 
+    let numero = cot.numero_cotizacion;
+
+    if (!numero) {
+      throw new Error("La cotización no tiene número asignado");
+    }
+
     const itemsRes = await db.query(
       "SELECT * FROM cotizacion_items WHERE id_cotizacion=$1 ORDER BY item ASC",
       [idCotizacion]
     );
     const items = itemsRes.rows;
 
-    const numero = await generarNumero();
 
-    // Subtotales desde items
-    let subtotal = items.reduce(
-      (acc, it) => acc + Number(it.cantidad) * Number(it.valor_unitario),
-      0
-    );
-    const iva = subtotal * 0.19;
-    const total = subtotal + iva;
+    // =======================
+    //  TOTALES DESDE BD (FUENTE ÚNICA)
+    // =======================
+
+    const subtotal      = Number(cot.subtotal || 0);
+    const admin         = Number(cot.valor_admin || 0);
+    const imprevistos   = Number(cot.valor_imprevistos || 0);
+    const utilidad      = Number(cot.valor_utilidad || 0);
+    const iva           = Number(cot.valor_iva || 0);
+    const total         = Number(cot.total || 0);
+
+    // Porcentajes solo para mostrar texto
+    const pAdmin = Number(cot.porcentaje_admin || 0);
+    const pImp   = Number(cot.porcentaje_imprevistos || 0);
+    const pUtil  = Number(cot.porcentaje_utilidad || 0);
+
+    const usarAIU = admin > 0 || imprevistos > 0 || utilidad > 0;
+
 
     // =======================
     // PDF temporal
@@ -161,52 +206,93 @@ async function generarPDF(idCotizacion) {
     const CONTENT_LEFT = 80;
     const CONTENT_RIGHT = 530;
     const MAX_WIDTH = CONTENT_RIGHT - CONTENT_LEFT;
-    const TABLE_LEFT = 65;
+    const TABLE_LEFT = CONTENT_LEFT;
 
     const PAGE_BOTTOM = 720;
     const CELL_PADDING = 4;
 
-    let y = 120;
+    let y = 112;
+
 
     // =======================
     // ENCABEZADO SUPERIOR
     // =======================
-    const fecha = new Date(cot.fecha).toLocaleDateString("es-CO", {
+    const fechaTexto = new Date(cot.fecha).toLocaleDateString("es-CO", {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
 
-    doc.font("Helvetica").fontSize(10).text(`Neiva, ${fecha}`, CONTENT_LEFT, y);
+    doc.font("Helvetica").fontSize(11).text(
+      `Neiva, ${fechaTexto}`,
+      CONTENT_LEFT,
+      y
+    );
 
-    doc.font("Helvetica-Bold")
-      .text(`Cotización No. ${numero}`, CONTENT_LEFT, y, { align: "right" });
+    y += 30;
 
-    y += 35;
 
+    // =======================
+    // REF: COTIZACIÓN (NUMERO SOBRE PLANTILLA)
+    // =======================
+
+    const REF_X = 407;
+    const REF_Y = 35;
+
+    doc
+      .font("Helvetica-BoldOblique")
+      .fontSize(11)
+      .fillColor("white")
+      .text(
+        `Ref.: Cotización No. ${numero}`,
+        REF_X,
+        REF_Y,
+        {
+          width: 200,
+          align: "left",
+          lineBreak: false
+        }
+      );
+
+    doc.fillColor("black");
+
+      
     // =======================
     // CLIENTE
     // =======================
     doc.font("Helvetica").text("Señores", CONTENT_LEFT, y);
-    y += 15;
+    y += 14;
 
     doc.font("Helvetica-Bold").text(cot.cliente_nombre, CONTENT_LEFT, y);
-    y += 15;
+    y += 14;
 
     doc.font("Helvetica").text(cot.cliente_direccion || "", CONTENT_LEFT, y);
-    y += 15;
+    y += 14;
 
     doc.text(cot.cliente_ciudad || "", CONTENT_LEFT, y);
-    y += 25;
+    y +=32;
 
-    doc.font("Helvetica-Bold").text(`Ref: ${cot.referencia}`, CONTENT_LEFT, y);
-    y += 30;
+   doc.font("Helvetica-Bold").fontSize(11).text(
+      `Ref: ${cot.referencia}`,
+      CONTENT_LEFT,
+      y,
+      {
+        width: MAX_WIDTH,
+        align: "left",
+      }
+    );
 
-    doc.font("Helvetica").text(
+    // usar la posición real a la que llegó el texto
+    y = doc.y + 8;
+
+    doc.font("Helvetica").fontSize(11).text(
       "Estimados señores, de acuerdo a su solicitud presentamos el siguiente presupuesto.",
       CONTENT_LEFT,
       y,
-      { width: MAX_WIDTH, align: "justify" }
+      {
+        width: MAX_WIDTH,
+        align: "justify",
+      }
     );
 
     y = doc.y + 20;
@@ -216,11 +302,11 @@ async function generarPDF(idCotizacion) {
     // =======================
     const col = [
       25,  // Item
-      280, // Descripción
+      200, // Descripción
       30,  // Und
-      30,  // Cant
-      65,  // Vr Unitario
-      65,  // Vr Total
+      35,  // Cant
+      85,  // Vr Unitario
+      90,  // Vr Total
     ];
 
     const totalWidth = col.reduce((a, b) => a + b, 0);
@@ -241,31 +327,55 @@ async function generarPDF(idCotizacion) {
           String(it.item),
           it.descripcion,
           it.unidad,
-          String(Math.round(it.cantidad)),
+          formatCantidad(it.cantidad),
           `$ ${formatMoney(vUnit)}`,
           `$ ${formatMoney(vTotal)}`,
         ],
       });
     }
 
-    // Totales
-    bodyRows.push(
-      {
+    // =======================
+    // TOTALES
+    // =======================
+    bodyRows.push({
+      kind: "total",
+      cells: ["", "", "", "", "Subtotal", `$ ${formatMoney(subtotal)}`],
+    });
+
+    if (usarAIU) {
+      bodyRows.push(
+        {
+          kind: "total",
+          cells: ["", "", "", "", `Administración (${pAdmin}%)`, `$ ${formatMoney(admin)}`],
+        },
+        {
+          kind: "total",
+          cells: ["", "", "", "", `Imprevistos (${pImp}%)`, `$ ${formatMoney(imprevistos)}`],
+        },
+        {
+          kind: "total",
+          cells: ["", "", "", "", `Utilidad (${pUtil}%)`, `$ ${formatMoney(utilidad)}`],
+        },
+        {
+          kind: "total",
+          cells: ["", "", "", "", "IVA (19% Utilidad)", `$ ${formatMoney(iva)}`],
+        }
+      );
+    } else {
+      bodyRows.push({
         kind: "total",
-        cells: ["", "", "", "", "Subtotal", `$  ${formatMoney(subtotal)}`],
-      },
-      {
-        kind: "total",
-        cells: ["", "", "", "", "IVA (19%)", `$  ${formatMoney(iva)}`],
-      },
-      {
-        kind: "total",
-        cells: ["", "", "", "", "TOTAL", `$  ${formatMoney(total)}`],
-      }
-    );
+        cells: ["", "", "", "", "IVA (19%)", `$ ${formatMoney(iva)}`],
+      });
+    }
+
+    // TOTAL (siempre al final)
+    bodyRows.push({
+      kind: "total",
+      cells: ["", "", "", "", "TOTAL", `$ ${formatMoney(total)}`],
+    });
 
     const itemsCount = items.length;
-    const totalsCount = 3;
+    const totalsCount = usarAIU ? 6 : 3;
     const totalsStartIndex = itemsCount;
 
     // Posiciones X
@@ -289,7 +399,7 @@ async function generarPDF(idCotizacion) {
     // =======================
     // PRE-CÁLCULO DE ALTURAS POR FILA
     // =======================
-    doc.fontSize(9);
+    doc.fontSize(10);
 
     const rowsMeta = [];
 
@@ -344,13 +454,13 @@ async function generarPDF(idCotizacion) {
 
       const isBold = label === "Subtotal" || label === "TOTAL";
 
-      doc.font(isBold ? "Helvetica-Bold" : "Helvetica").fontSize(9);
+      doc.font(isBold ? "Helvetica-Bold" : "Helvetica").fontSize(10);
       const labelHeight = doc.heightOfString(label, {
         width: col[4] - 2 * CELL_PADDING,
         align: "center",
       });
 
-      doc.font(isBold ? "Helvetica-Bold" : "Helvetica").fontSize(9);
+      doc.font(isBold ? "Helvetica-Bold" : "Helvetica").fontSize(10);
       const valueHeight = doc.heightOfString(value, {
         width: col[5] - 2 * CELL_PADDING,
         align: "right",
@@ -406,7 +516,7 @@ async function generarPDF(idCotizacion) {
 
           // Salto a nueva página SIN encabezado
           doc.addPage();
-          currentY = 140; // posición limpia bajo el membrete
+          currentY = PAGE_CONTENT_START;
         }
       }
 
@@ -418,11 +528,7 @@ async function generarPDF(idCotizacion) {
           .stroke();
 
         doc.addPage();
-        currentPageHeaderTop = 120;
-
-        // ⚠️ NO dibujamos encabezado en las siguientes páginas (opción A)
-        // Iniciamos directamente las filas de la tabla
-        currentY = 140;
+        currentY = PAGE_CONTENT_START;
       }
 
       const rowTopY = currentY;
@@ -473,10 +579,10 @@ async function generarPDF(idCotizacion) {
                 ).clip(); 
 
                 // 3. Dibujar el texto DENTRO del área recortada
-                const cellY = rowTopY + CELL_PADDING; // Alineación al top (arriba)
+                const cellY = rowTopY + (rowHeight - textHeight) / 2; // Alineación al top (arriba)
 
                 doc.font("Helvetica")
-                    .fontSize(9)
+                    .fontSize(10)
                     .text(textToDraw, xPositions[c] + CELL_PADDING, cellY, {
                         width: cellWidth, // El texto se auto-ajusta
                         align: 'left',
@@ -503,7 +609,7 @@ async function generarPDF(idCotizacion) {
 
                 // Dibujar el texto
                 doc.font("Helvetica")
-                    .fontSize(9)
+                    .fontSize(10)
                     .text(textToDraw, xPositions[c] + CELL_PADDING, cellY, {
                         width: cellWidth,
                         align,
@@ -553,7 +659,7 @@ async function generarPDF(idCotizacion) {
 
 
             // label (columna 5)
-            doc.font(isBold ? "Helvetica-Bold" : "Helvetica").fontSize(9);
+            doc.font(isBold ? "Helvetica-Bold" : "Helvetica").fontSize(10);
             const labelHeight = doc.heightOfString(label, {
                 width: col[4] - 2 * CELL_PADDING,
                 align: "center",
@@ -563,10 +669,11 @@ async function generarPDF(idCotizacion) {
             doc.text(label, startXTotals + CELL_PADDING, labelY, {
                 width: col[4] - 2 * CELL_PADDING,
                 align: "center",
+                lineBreak: false,
             });
 
             // value (columna 6)
-            doc.font(isBold ? "Helvetica-Bold" : "Helvetica").fontSize(9);
+            doc.font(isBold ? "Helvetica-Bold" : "Helvetica").fontSize(10);
             const valueHeight = doc.heightOfString(value, {
                 width: col[5] - 2 * CELL_PADDING,
                 align: "right",
@@ -607,37 +714,120 @@ async function generarPDF(idCotizacion) {
 
     y = currentY + 20;
 
-    // =======================
-    // FIRMA
-    // =======================
-    if (y > 620) {
-      doc.addPage();
-      y = 180;
+    let finalBlockHeight = 0;
+
+    // notas
+    if (cot.nota && cot.nota.trim() !== "") {
+      finalBlockHeight += doc.heightOfString("Notas:", { width: MAX_WIDTH });
+      finalBlockHeight += doc.heightOfString(cot.nota, {
+        width: MAX_WIDTH,
+        align: "justify",
+      });
+      finalBlockHeight += 20;
     }
 
-    doc.font("Helvetica").fontSize(10).text(
+    // texto legal
+    finalBlockHeight += doc.heightOfString(
+      "El precio total incluye tanto la mano de obra, al igual que las actividades...",
+      { width: MAX_WIDTH, align: "justify" }
+    );
+
+    finalBlockHeight += 30
+
+    // =======================
+    // TEXTO FINAL (SIEMPRE)
+    // =======================
+    if (y + finalBlockHeight > PAGE_CONTENT_END) {
+      doc.addPage();
+      y = PAGE_CONTENT_START;
+    }
+
+    // =======================
+    // NOTAS (SI EXISTEN)
+    // =======================
+    if (cot.nota && cot.nota.trim() !== "") {
+      // Título Notas
+      doc.font("Helvetica-Bold")
+        .fontSize(11)
+        .text("Notas:", CONTENT_LEFT, y);
+
+      y += 14;
+
+      // Contenido de la nota
+      doc.font("Helvetica")
+        .fontSize(11)
+        .text(cot.nota, CONTENT_LEFT, y, {
+          width: MAX_WIDTH,
+          align: "justify",
+        });
+
+      y = doc.y + 20; 
+    }
+
+    doc.font("Helvetica").fontSize(11).text(
       "El precio total incluye tanto la mano de obra, al igual que las actividades, herramientas, accesorios y material necesario para la correcta ejecución de las labores.",
       CONTENT_LEFT,
       y,
       { width: MAX_WIDTH, align: "justify" }
     );
 
-    y += 50;
+    y = doc.y + 20;
 
-    doc.text("Atentamente,", CONTENT_LEFT, y);
-    y += 60;
+    // =======================
+    // BLOQUE ATENTAMENTE + FIRMA (INDIVISIBLE)
+    // =======================
 
-    const firmaPath = path.join(__dirname, "../assets/firma_jorge.png");
-    if (fs.existsSync(firmaPath)) {
-      doc.image(firmaPath, CONTENT_LEFT, y - 10, { width: 150 });
+    // Alturas controladas del bloque
+    const ATENTAMENTE_HEIGHT = 12;
+    const GAP_ATENT_FIRMA = 4;
+    const FIRMA_HEIGHT = 40;
+    const GAP_FIRMA_NOMBRE = 6;
+    const NOMBRE_HEIGHT = 15;
+    const CARGO_HEIGHT = 15;
+
+    // Altura total del bloque completo
+    const BLOQUE_FIRMA_HEIGHT =
+      ATENTAMENTE_HEIGHT +
+      GAP_ATENT_FIRMA +
+      FIRMA_HEIGHT +
+      GAP_FIRMA_NOMBRE +
+      NOMBRE_HEIGHT +
+      CARGO_HEIGHT;
+
+    // Validar espacio ANTES de dibujar
+    if (y + BLOQUE_FIRMA_HEIGHT > PAGE_CONTENT_END) {
+      doc.addPage();
+      y = PAGE_CONTENT_START;
     }
 
-    doc.font("Helvetica-Bold").text(
-      "JORGE MEDINA RAMIREZ",
-      CONTENT_LEFT,
-      y + 50
-    );
-    doc.font("Helvetica").text("Director Comercial", CONTENT_LEFT);
+    // Atentamente
+    doc.font("Helvetica")
+      .fontSize(11)
+      .text("Atentamente,", CONTENT_LEFT, y);
+
+    y += ATENTAMENTE_HEIGHT + GAP_ATENT_FIRMA;
+
+    // Firma
+    const firmaPath = path.join(__dirname, "../assets/firma_jorge.png");
+
+    if (cot.estado === "final" && fs.existsSync(firmaPath)) {
+      doc.image(firmaPath, CONTENT_LEFT, y, { width: 150 });
+    }
+
+    y += FIRMA_HEIGHT + GAP_FIRMA_NOMBRE;
+
+    // Nombre
+    doc.font("Helvetica-Bold")
+      .fontSize(12)
+      .text("JORGE ANDRES MEDINA GONZÁLEZ", CONTENT_LEFT, y);
+
+    y += NOMBRE_HEIGHT;
+
+    // Cargo
+    doc.font("Helvetica")
+      .fontSize(12)
+      .text("Ingeniero de Proyectos", CONTENT_LEFT);
+
 
     doc.end();
 
@@ -648,7 +838,7 @@ async function generarPDF(idCotizacion) {
     // =======================
     const plantillaPDF = await PDFDocument.load(
       fs.readFileSync(
-        path.join(__dirname, "../assets/Plantilla_Seltel_2025.pdf")
+        path.join(__dirname, "../assets/Plantilla_Seltel.pdf")
       )
     );
 
@@ -662,34 +852,66 @@ async function generarPDF(idCotizacion) {
     const [plantillaPage] = await finalDoc.copyPages(plantillaPDF, [0]);
     const { width, height } = plantillaPage.getSize();
 
-    for (const pagina of paginasContenido) {
+    const totalPaginas = paginasContenido.length;
+
+    for (let i = 0; i < paginasContenido.length; i++) {
       const page = finalDoc.addPage([width, height]);
+
       const fondo = await finalDoc.embedPage(plantillaPage);
-      const contenido = await finalDoc.embedPage(pagina);
+      const contenido = await finalDoc.embedPage(paginasContenido[i]);
 
       page.drawPage(fondo, { x: 0, y: 0 });
       page.drawPage(contenido, { x: 0, y: 0 });
+
+    // =======================
+    // NUMERACIÓN DE PÁGINA
+    // =======================
+      page.drawText(`Página ${i + 1} de ${totalPaginas}`, {
+        x: width - 296,
+        y: 17.56,
+        size: 6,
+        color: rgb(0.5, 0.5, 0.5),
+      });
     }
 
     const finalBytes = await finalDoc.save();
 
-    // GUARDAR ARCHIVO FINAL
-    const now = new Date();
-    const año = now.getFullYear();
-    const mes = String(now.getMonth() + 1).padStart(2, "0");
+    // =======================
+    // GUARDAR ARCHIVO FINAL (DOBLE RUTA)
+    // =======================
+    const fechaCotizacion = new Date(cot.fecha);
 
-    const destino = `Z:/Cotizaciones/PRUEBAS/${año}/${mes}. PRUEBAS/`;
-    if (!fs.existsSync(destino)) fs.mkdirSync(destino, { recursive: true });
+    // Guardar en EMMA
+    const rutaEmma = guardarPDFEnRuta(
+      BASE_COTIZACIONES_EMMA,
+      fechaCotizacion,
+      numero,
+      cot.referencia,
+      finalBytes
+    );
 
-    const filePath = path.join(destino, `${numero} ${cot.referencia}.pdf`);
-    fs.writeFileSync(filePath, finalBytes);
-    fs.unlinkSync(tempPath);
+    // Guardar en carpeta general
+    guardarPDFEnRuta(
+      BASE_COTIZACIONES_GENERAL,
+      fechaCotizacion,
+      numero,
+      cot.referencia,
+      finalBytes
+    );
 
-    return filePath;
-  } catch (err) {
-    console.error("❌ Error en generarPDF:", err);
-    throw err;
+    // Limpiar temporal
+    if (fs.existsSync(tempPath)) {
+      fs.unlinkSync(tempPath);
+    }
+
+    // ⬅️ IMPORTANTE: devolver SOLO la ruta que el preview espera
+    return rutaEmma;
+
+    } catch (err) {
+      console.error("❌ Error en generarPDF:", err);
+      throw err;
+    }
   }
-}
+
 
 module.exports = { generarPDF };

@@ -1,59 +1,93 @@
+/**
+ * Archivo: VisualizarCotizaciones.jsx
+ * Descripción: Vista de consulta general de cotizaciones.
+ *              Permite listar, filtrar y buscar cotizaciones
+ *              por estado, cliente, referencia o número.
+ * Autor: Karol Illera
+ */
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, Download, Search } from "lucide-react";
-import { getCotizaciones, downloadPDF } from "../services/api";
+import { ArrowLeft, FileText, Search } from "lucide-react";
+
+// Estilos específicos de la vista
 import "../pages/VisualizarCotizaciones.css";
+
+// Servicios de comunicación con el backend
+import { getCotizaciones, API_URL } from "../services/api";
 
 export default function VisualizarCotizaciones() {
   const navigate = useNavigate();
 
-  const [cotizaciones, setCotizaciones] = useState([]);
-  const [filtered, setFiltered] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [estadoFilter, setEstadoFilter] = useState("todos");
+  // =======================
+  // Estados del componente
+  // =======================
+  const [cotizaciones, setCotizaciones] = useState([]); // lista completa
+  const [filtered, setFiltered] = useState([]);         // lista filtrada
+  const [loading, setLoading] = useState(true);         // estado de carga
+  const [searchTerm, setSearchTerm] = useState("");     // texto de búsqueda
+  const [estadoFilter, setEstadoFilter] = useState("todos"); // filtro por estado
 
+  // =======================
+  // Carga inicial de datos
+  // =======================
   useEffect(() => {
     loadCotizaciones();
   }, []);
 
+  // =======================
+  // Refiltrado automático
+  // =======================
   useEffect(() => {
     filtrar();
   }, [searchTerm, estadoFilter, cotizaciones]);
 
+  /**
+   * Obtiene todas las cotizaciones desde el backend
+   */
   async function loadCotizaciones() {
     try {
       const data = await getCotizaciones();
       setCotizaciones(data);
       setFiltered(data);
     } catch (e) {
-      console.error(e);
+      console.error("Error cargando cotizaciones:", e);
     } finally {
       setLoading(false);
     }
   }
 
-    function filtrar() {
-      let temp = [...cotizaciones];
+  /**
+   * Aplica filtros por estado y texto de búsqueda
+   */
+  function filtrar() {
+    let temp = [...cotizaciones];
 
-      if (estadoFilter !== "todos") {
-        temp = temp.filter((c) => c.estado === estadoFilter);
-      }
-
-      if (searchTerm.trim() !== "") {
-        temp = temp.filter(
-          (c) =>
-            String(c.numero_cotizacion || c.id_cotizacion)
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase()) ||
-            c.cliente_nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            c.referencia.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
-
-      setFiltered(temp);
+    // Filtro por estado
+    if (estadoFilter !== "todos") {
+      temp = temp.filter((c) => c.estado === estadoFilter);
     }
 
+    // Filtro por texto (número, cliente o referencia)
+    if (searchTerm.trim() !== "") {
+      temp = temp.filter(
+        (c) =>
+          String(c.numero_cotizacion || c.id_cotizacion)
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          c.cliente_nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.referencia.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    setFiltered(temp);
+  }
+
+  // =======================
+  // Funciones de formato
+  // =======================
+
+  // Formato moneda COP
   const formatCurrency = (v) =>
     new Intl.NumberFormat("es-CO", {
       style: "currency",
@@ -61,22 +95,30 @@ export default function VisualizarCotizaciones() {
       minimumFractionDigits: 0,
     }).format(v);
 
+  // Formato fecha DD/MM/YYYY
   const formatDate = (d) =>
     new Date(d).toLocaleDateString("es-CO", {
+      timeZone: "UTC",
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
     });
 
+  // =======================
+  // Estado de carga
+  // =======================
   if (loading) {
     return (
-      <div className="viz-loading">
+      <div className="viz-loading-screen">
         <div className="viz-spinner"></div>
         <p>Cargando cotizaciones...</p>
       </div>
     );
   }
 
+  // =======================
+  // Render principal
+  // =======================
   return (
     <div className="viz-root">
       {/* HEADER */}
@@ -141,20 +183,24 @@ export default function VisualizarCotizaciones() {
             <tbody>
               {filtered.map((c) => (
                 <tr key={c.id_cotizacion}>
-                 <td className="viz-bold">
-                  {c.numero_cotizacion || c.id_cotizacion}
-                </td>
+                  <td className="viz-bold">
+                    {c.numero_cotizacion || c.id_cotizacion}
+                  </td>
 
                   <td>{c.cliente_nombre}</td>
                   <td className="truncate">{c.referencia}</td>
                   <td>{formatDate(c.fecha)}</td>
 
-                  <td className="viz-total">{formatCurrency(c.total)}</td>
+                  <td className="viz-total">
+                    {formatCurrency(c.total)}
+                  </td>
 
                   <td>
                     <span
                       className={
-                        c.estado === "final" ? "estado-final" : "estado-borrador"
+                        c.estado === "final"
+                          ? "estado-final"
+                          : "estado-borrador"
                       }
                     >
                       {c.estado === "final" ? "Final" : "Borrador"}
@@ -166,20 +212,14 @@ export default function VisualizarCotizaciones() {
                       <button
                         className="viz-btn"
                         onClick={() =>
-                          navigate(`/ver-cotizacion/${c.id_cotizacion}`)
+                          window.open(
+                            `${API_URL}/cotizaciones/${c.id_cotizacion}/preview`,
+                            "_blank"
+                          )
                         }
                       >
-                        <Eye size={14} /> Ver
+                        <FileText size={14} /> Ver PDF
                       </button>
-
-                      {c.estado === "final" && (
-                        <button
-                          className="viz-btn"
-                          onClick={() => downloadPDF(c.id_cotizacion)}
-                        >
-                          <Download size={14} /> PDF
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>

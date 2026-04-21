@@ -1,26 +1,46 @@
+/**
+ * Archivo: RevisarCotizaciones.jsx
+ * Descripción: Vista para la revisión de cotizaciones en estado borrador.
+ *              Permite visualizar, editar, eliminar y finalizar
+ *              cotizaciones antes de su cierre definitivo.
+ * Autor: Karol Illera
+ */
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+
+// Servicios API
 import {
   getCotizaciones,
   deleteCotizacion,
   finalizarCotizacion,
-  downloadPDF,
 } from "../services/api";
+
+// Estilos específicos de la vista
 import "./RevisarCotizaciones.css";
 
 export default function RevisarCotizaciones() {
   const navigate = useNavigate();
-  const [cotizaciones, setCotizaciones] = useState([]);
-  const [loading, setLoading] = useState(true);
 
+  // =======================
+  // Estados del componente
+  // =======================
+  const [cotizaciones, setCotizaciones] = useState([]); // cotizaciones en borrador
+  const [loading, setLoading] = useState(true);         // estado de carga
+
+  // =======================
+  // Carga inicial
+  // =======================
   useEffect(() => {
     loadCotizaciones();
   }, []);
 
+  /**
+   * Obtiene las cotizaciones en estado "borrador"
+   */
   const loadCotizaciones = async () => {
     try {
       const data = await getCotizaciones("borrador");
-      console.log("COTIZACIONES FRONT:", data); //temporal
       setCotizaciones(data);
     } catch (error) {
       console.error("Error cargando cotizaciones:", error);
@@ -29,6 +49,11 @@ export default function RevisarCotizaciones() {
     }
   };
 
+  // =======================
+  // Funciones de formato
+  // =======================
+
+  // Formato moneda COP
   const formatCurrency = (value) =>
     new Intl.NumberFormat("es-CO", {
       style: "currency",
@@ -36,15 +61,20 @@ export default function RevisarCotizaciones() {
       minimumFractionDigits: 0,
     }).format(value);
 
+  // Formato fecha legible
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("es-CO", {
+      timeZone: "UTC",
       year: "numeric",
       month: "long",
       day: "numeric",
     });
   };
 
+  // =======================
+  // Estado de carga
+  // =======================
   if (loading) {
     return (
       <div className="rev-loading-screen">
@@ -54,13 +84,19 @@ export default function RevisarCotizaciones() {
     );
   }
 
+  // =======================
+  // Render principal
+  // =======================
   return (
     <div className="rev-root">
       <div className="rev-container">
-        
+
         {/* ENCABEZADO */}
         <div className="rev-header">
-          <button className="rev-btn-back" onClick={() => navigate("/dashboard")}>
+          <button
+            className="rev-btn-back"
+            onClick={() => navigate("/dashboard")}
+          >
             ← Volver
           </button>
 
@@ -72,10 +108,12 @@ export default function RevisarCotizaciones() {
           </div>
         </div>
 
-        {/* SI NO HAY COTIZACIONES */}
+        {/* ESTADO VACÍO */}
         {cotizaciones.length === 0 ? (
           <div className="empty-card">
-            <p className="empty-text">No hay cotizaciones en estado borrador</p>
+            <p className="empty-text">
+              No hay cotizaciones en estado borrador
+            </p>
 
             <button
               className="btn-crear-primera"
@@ -85,10 +123,12 @@ export default function RevisarCotizaciones() {
             </button>
           </div>
         ) : (
+          /* LISTADO DE COTIZACIONES */
           <div className="rev-list">
             {cotizaciones.map((c) => (
               <div key={c.id_cotizacion} className="rev-card">
 
+                {/* Información principal */}
                 <div className="rev-card-header">
                   <div>
                     <h2 className="rev-card-title">
@@ -101,25 +141,34 @@ export default function RevisarCotizaciones() {
                     <p><b>Fecha:</b> {formatDate(c.fecha)}</p>
                   </div>
 
+                  {/* Estado y resumen */}
                   <div className="rev-card-right">
                     <span className="rev-status">Borrador</span>
-                    <p className="rev-card-total">{formatCurrency(c.total)}</p>
-                    <p className="rev-items">{c.items_count} ítems</p>
+                    <p className="rev-card-total">
+                      {formatCurrency(c.total)}
+                    </p>
+                    <p className="rev-items">
+                      {c.items_count} ítems
+                    </p>
                   </div>
                 </div>
 
+                {/* Acciones */}
                 <div className="rev-card-actions">
                   <button
-                    className="rev-btn-outline"
-                    onClick={() => navigate(`/ver-cotizacion/${c.id_cotizacion}`)}
+                    className="rev-btn-primary"
+                    onClick={() =>
+                      navigate(`/ver-cotizacion/${c.id_cotizacion}`)
+                    }
                   >
-                    👁 Ver Detalle
+                    Ver Cotización
                   </button>
 
                   <button
-                    className="rev-btn-delete"
+                    className="rev-btn-outline"
                     onClick={() =>
-                      deleteCotizacion(c.id_cotizacion).then(loadCotizaciones)
+                      deleteCotizacion(c.id_cotizacion)
+                        .then(loadCotizaciones)
                     }
                   >
                     🗑 Eliminar
@@ -127,13 +176,18 @@ export default function RevisarCotizaciones() {
 
                   <button
                     className="rev-btn-green"
-                    onClick={() =>
-                      finalizarCotizacion(c.id_cotizacion)
-                        .then(() => downloadPDF(c.id_cotizacion))
-                        .then(loadCotizaciones)
-                    }
+                    onClick={async () => {
+                      try {
+                        await finalizarCotizacion(c.id_cotizacion);
+                        alert("Cotización finalizada correctamente");
+                        navigate("/visualizar-cotizaciones");
+                      } catch (err) {
+                        console.error(err);
+                        alert("Error finalizando la cotización");
+                      }
+                    }}
                   >
-                    ✔ Finalizar y Generar PDF
+                    ✔ Finalizar
                   </button>
                 </div>
 

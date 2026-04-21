@@ -1,3 +1,12 @@
+/**
+ * Archivo: CrearCotizacion.css
+ * Descripción: Estilos para la vista de creación y edición de cotizaciones.
+ *              Define el diseño del formulario, tarjetas de contenido,
+ *              tabla de ítems, secciones de cálculo (AIU, totales)
+ *              y botones de acción para guardar o cancelar.
+ * Autor: Karol Illera
+ */
+ 
 /* CONTENEDOR GENERAL */
 .crear-root {
   min-height: 100vh;
@@ -137,6 +146,7 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
+  table-layout: fixed;
 }
 
 .items-table th,
@@ -157,49 +167,30 @@
   text-align: left;
 }
 
-.items-table input {
-  height: 32px;
+.items-table input,
+.items-table select {
+  height: 30px;
   padding: 4px 8px;
-}
-
-.items-table input[type="number"] {
-  height: 28px;
-  padding: 2px 6px;
-  font-size: 12.5px;
-}
-
-.items-table input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.15);
+  font-size: 13px;
+  box-sizing: border-box;
 }
 
 .items-table select {
-  width: 100%;
-  height: 32px;                 /* ⬅️ igual que input */
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 4px 22px 4px 8px;    /* ⬅️ menos padding */
-  font-size: 13px;
-  font-family: inherit;
-  background-color: #ffffff;
-  box-sizing: border-box;
-  line-height: 1.2;
-
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
 
+  height: 30px;
+  padding: 4px 26px 4px 8px; /* espacio solo para la flecha */
+  font-size: 13px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background-color: #fff;
+
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 20' fill='%236b7280' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7l5 5 5-5'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 6px center;
+  background-position: right 8px center;
   background-size: 12px;
-}
-
-.items-table input,
-.items-table select {
-  height: 28px;                 /* más bajo */
-  padding: 2px 22px 2px 6px;    /* menos relleno */
-  font-size: 12.5px;            /* apenas más pequeño */
 }
 
 /* Focus igual a inputs */
@@ -209,35 +200,61 @@
   outline: none;
 }
 
-/* columnas numéricas / item / borrar */
-.col-item {
+
+/* 1️⃣ Item */
+.items-table th:nth-child(1),
+.items-table td:nth-child(1) {
   width: 50px;
   text-align: center;
+}
+
+/* 2️⃣ Descripción (la que más crece) */
+.items-table th:nth-child(2),
+.items-table td:nth-child(2) {
+  width: auto;
+}
+
+/* 3️⃣ Unidad (más pequeña) */
+.items-table th:nth-child(3),
+.items-table td:nth-child(3) {
+  width: 85px;
+  text-align: center;
+}
+
+/* 4️⃣ Cantidad */
+.items-table th:nth-child(4),
+.items-table td:nth-child(4) {
+  width: 90px;
+  text-align: center;
+}
+
+/* 5️⃣ Vr Unitario */
+.items-table th:nth-child(5),
+.items-table td:nth-child(5) {
+  width: 110px;
+  text-align: center;
+}
+
+/* 6️⃣ Vr Total */
+/* 6️⃣ Vr Total */
+.items-table th:nth-child(6) {
+  width: 170px;
+  text-align: center;
+}
+
+.items-table td:nth-child(6) {
+  width: 170px;
+  text-align: right;
   white-space: nowrap;
 }
 
-.col-unidad {
-  width: 80px;
-}
-
-.col-number {
-  width: 90px;
-}
-
-.col-delete {
-  width: 40px;
+/* 7️⃣ Botón eliminar */
+.items-table th:nth-child(7),
+.items-table td:nth-child(7) {
+  width: 32px;
   text-align: center;
 }
 
-.col-unidad,
-.col-number {
-  text-align: center;
-}
-
-.col-unidad select,
-.col-number input {
-  margin: 0 auto;
-}
 
 /* TOTALES */
 .tfoot-label {
@@ -256,6 +273,45 @@
 
 .total-blue {
   color: #2563eb;
+}
+
+/* ===========================
+   CUADRO DE TOTALES
+=========================== */
+
+.totales-box tr td {
+  background: #f9fafb;
+}
+
+/* Columna de etiquetas */
+.totales-box .tfoot-label {
+  text-align: right;
+  padding-right: 12px;
+  font-weight: 500;
+  border-left: 1px solid #e5e7eb;
+}
+
+/* Columna de valores */
+.totales-box .money {
+  border-left: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+}
+
+/* Borde superior del cuadro */
+.totales-box tr:first-child td {
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Borde inferior del cuadro */
+.totales-box tr:last-child td {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Total final destacado */
+.total-final .tfoot-label,
+.total-final .money {
+  font-weight: 700;
+  background: #eef2ff;
 }
 
 /* BOTÓN ELIMINAR ÍTEM (X) */
@@ -314,38 +370,39 @@
 }
 
 /* ===========================
-   AUI OPCIONAL
+   AIU OPCIONAL
 =========================== */
 
-/* Checkbox AUI */
-.aui-toggle {
+/* Checkbox AIU */
+.aiu-box {
+  margin-top: 8px;
+}
+
+.aiu-label {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #111827;
-  margin-bottom: 16px;
+  font-weight: 500;
   cursor: pointer;
 }
 
-.aui-toggle input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: #2563eb; /* azul bonito */
-  cursor: pointer;
+.aiu-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex-shrink: 0;
 }
 
-/* Grid de AUI (3 columnas) */
+/* Grid de AIU (3 columnas) */
 .card-grid-3 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   margin-top: 10px;
-  animation: fadeInAUI 0.2s ease-in-out;
+  animation: fadeInAIU 0.2s ease-in-out;
 }
 
-@keyframes fadeInAUI {
+@keyframes fadeInAIU {
   from {
     opacity: 0;
     transform: translateY(-4px);
@@ -364,6 +421,13 @@ input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
 }
 
+.unidad-input {
+  width: 60px;
+  max-width: 60px;
+  padding: 4px 6px;
+  font-size: 13px;
+}
+
 input[type="number"] {
   appearance: textfield;        /* estándar */
   -webkit-appearance: none;     /* Chrome / Edge / Safari */
@@ -378,4 +442,15 @@ input[type="number"] {
 .items-table td > select {
   display: block;
   margin: 0 auto;   /* ⬅️ centra horizontal */
+}
+
+.items-table thead th {
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.items-table thead th:nth-child(5),
+.items-table thead th:nth-child(6) {
+  text-align: center;
 }

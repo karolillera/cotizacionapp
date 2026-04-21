@@ -1,5 +1,9 @@
+version: "3.7"
+
 services:
+
   backend:
+    
     build: ./backend
     container_name: seltel-backend
     ports:
@@ -7,21 +11,29 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env
+
     networks:
       - evolution-net
 
+    volumes:
+      - /seltel/compartida:/seltel/compartida
+
   frontend:
+
     build: ./frontend
     container_name: seltel-frontend
     ports:
       - "5173:5173"
     depends_on:
       - backend
+
     volumes:
       - ./frontend:/app
       - /app/node_modules
+
     environment:
       - CHOKIDAR_USEPOLLING=true
+
     restart: unless-stopped
 
 networks:

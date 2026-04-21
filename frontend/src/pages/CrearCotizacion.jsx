@@ -1,3 +1,13 @@
+/**
+ * Archivo: CrearCotizacion.jsx
+ * Descripción: Vista para la creación y edición de cotizaciones.
+ *              Permite registrar datos del cliente, gestionar
+ *              ítems dinámicos, aplicar cálculos financieros
+ *              (subtotal, AIU, IVA) y guardar o actualizar
+ *              cotizaciones en estado borrador.
+ * Autor: Karol Illera
+ */
+
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./CrearCotizacion.css";
@@ -13,16 +23,16 @@ export default function CrearCotizacion() {
   const { id } = useParams();
   const esEdicion = Boolean(id);
 
-  const [usarAUI, setUsarAUI] = useState(false);
+  const [usarAIU, setUsarAIU] = useState(false);
 
   const [formData, setFormData] = useState({
     cliente_nombre: "",
     cliente_direccion: "",
     cliente_ciudad: "",
     referencia: "",
-    porcentaje_admin: "0",
-    porcentaje_utilidad: "0",
-    porcentaje_imprevistos: "0",
+    porcentaje_admin: "",
+    porcentaje_utilidad: "",
+    porcentaje_imprevistos: "",
     nota: "",
   });
 
@@ -31,49 +41,45 @@ export default function CrearCotizacion() {
       item: 1,
       descripcion: "",
       unidad: "",
-      cantidad: "0",
-      valor_unitario: "0",
+      cantidad: "",
+      valor_unitario: "",
       valor_total: 0,
     },
   ]);
 
-  useEffect(() => {
+useEffect(() => {
   if (!esEdicion) return;
-
-  useEffect(() => {
-    if (!usarAUI) {
-      setFormData(prev => ({
-        ...prev,
-        porcentaje_admin: "0",
-        porcentaje_imprevistos: "0",
-        porcentaje_utilidad: "0",
-      }));
-    }
-  }, [usarAUI]);
 
   async function cargarCotizacion() {
     try {
       const data = await getCotizacionById(id);
 
-      // Datos generales
       setFormData({
-      cliente_nombre: data.cliente_nombre || "",
+        cliente_nombre: data.cliente_nombre || "",
         cliente_direccion: data.cliente_direccion || "",
         cliente_ciudad: data.cliente_ciudad || "",
         referencia: data.referencia || "",
-        porcentaje_admin: String(data.porcentaje_admin ?? "0"),
-        porcentaje_imprevistos: String(data.porcentaje_imprevistos ?? "0"),
-        porcentaje_utilidad: String(data.porcentaje_utilidad ?? "0"),
+        porcentaje_admin: data.porcentaje_admin != null
+          ? String(parseInt(data.porcentaje_admin))
+          : "",
+
+        porcentaje_imprevistos: data.porcentaje_imprevistos != null
+          ? String(parseInt(data.porcentaje_imprevistos))
+          : "",
+
+        porcentaje_utilidad: data.porcentaje_utilidad != null
+          ? String(parseInt(data.porcentaje_utilidad))
+          : "",
+
         nota: data.nota || "",
       });
 
-      setUsarAUI(
+      setUsarAIU(
         Number(data.porcentaje_admin) > 0 ||
         Number(data.porcentaje_utilidad) > 0 ||
         Number(data.porcentaje_imprevistos) > 0
       );
 
-      // Ítems
       const loadedItems = data.items.map((it, idx) => {
         const cant = Number(it.cantidad || 0);
         const vrU = Number(it.valor_unitario || 0);
@@ -84,32 +90,51 @@ export default function CrearCotizacion() {
           unidad: it.unidad || "",
           cantidad: String(cant),
           valor_unitario: String(vrU),
-          valor_total: cant * vrU,
+          valor_total: roundMoney(cant * vrU),
         };
       });
 
       setItems(
-        loadedItems.length > 0
+        loadedItems.length
           ? loadedItems
-          : [{
-              item: 1,
-              descripcion: "",
-              unidad: "",
-              cantidad: "0",
-              valor_unitario: "0",
-              valor_total: 0,
-            }]
+          : [
+              {
+                item: 1,
+                descripcion: "",
+                unidad: "",
+                cantidad: "",
+                valor_unitario: "",
+                valor_total: 0,
+              },
+            ]
       );
+    } catch (err) {
+      console.error(err);
+      alert("No se pudo cargar la cotización");
 
-    } catch (error) {
-      console.error("Error cargando cotización:", error);
-      alert("No se pudo cargar la cotización para editar");
-      navigate("/revisar-cotizaciones");
+      if (esEdicion && id) {
+        navigate(`/ver-cotizacion/${id}`);
+      } else {
+        navigate("/revisar-cotizaciones");
+      }
     }
   }
 
   cargarCotizacion();
-}, [id]);
+}, [id, esEdicion, navigate]);
+
+// 2️⃣ Limpiar porcentajes cuando AIU se apaga
+useEffect(() => {
+  if (!usarAIU && !esEdicion) {
+    setFormData(prev => ({
+      ...prev,
+      porcentaje_admin: "",
+      porcentaje_imprevistos: "",
+      porcentaje_utilidad: "",
+    }));
+  }
+}, [usarAIU, esEdicion]);
+
 
   // =====================
   // Handlers generales
@@ -131,17 +156,17 @@ export default function CrearCotizacion() {
     };
 
     if (field === "cantidad" || field === "valor_unitario") {
-      const cantidad = parseInt(
-        field === "cantidad" ? value : newItems[index].cantidad
-      );
-      const vrUnit = parseFloat(
-        field === "valor_unitario" ? value : newItems[index].valor_unitario
-      );
+    const cantidad = parseFloat(
+      field === "cantidad" ? value : newItems[index].cantidad
+    );
+    const vrUnit = parseFloat(
+      field === "valor_unitario" ? value : newItems[index].valor_unitario
+    );
 
-      const cantNum = isNaN(cantidad) ? 0 : cantidad;
-      const vrNum = isNaN(vrUnit) ? 0 : vrUnit;
+    const cantNum = isNaN(cantidad) ? 0 : cantidad;
+    const vrNum = isNaN(vrUnit) ? 0 : vrUnit;
 
-      newItems[index].valor_total = roundMoney(cantNum * vrNum);
+    newItems[index].valor_total = roundMoney(cantNum * vrNum);
     }
 
     setItems(newItems);
@@ -154,8 +179,8 @@ export default function CrearCotizacion() {
         item: prev.length + 1,
         descripcion: "",
         unidad: "",
-        cantidad: "0",
-        valor_unitario: "0",
+        cantidad: "",
+        valor_unitario: "",
         valor_total: 0,
       },
     ]);
@@ -175,35 +200,51 @@ export default function CrearCotizacion() {
   // Cálculos
   // =====================
   function calculateSubtotal() {
-    return roundMoney(
-      items.reduce(
-        (sum, it) => sum + (Number(it.valor_total) || 0),
-        0
-      )
+      return roundMoney(
+        items.reduce(
+          (sum, it) => sum + (Number(it.valor_total) || 0),
+          0
+        )
+      );
+    }
+
+    function calculateAIU() {
+    const costoSubtotal = calculateSubtotal();
+
+    const adminPct = parseFloat(formData.porcentaje_admin) || 0;
+    const impPct = parseFloat(formData.porcentaje_imprevistos) || 0;
+    const utilPct = parseFloat(formData.porcentaje_utilidad) || 0;
+
+    const administracion = roundMoney(costoSubtotal * adminPct / 100);
+    const imprevistos   = roundMoney(costoSubtotal * impPct / 100);
+    const utilidad      = roundMoney(costoSubtotal * utilPct / 100);
+
+    const ivaUtilidad   = roundMoney(utilidad * 0.19);
+
+    const total = roundMoney(
+      costoSubtotal +
+      administracion +
+      imprevistos +
+      utilidad +
+      ivaUtilidad
     );
+
+    return {
+      costoSubtotal,
+      administracion,
+      imprevistos,
+      utilidad,
+      ivaUtilidad,
+      total
+    };
   }
 
   function calculateTotal() {
-    const subtotal = calculateSubtotal();
-
-    // 👉 SIN AUI: solo IVA
-    if (!usarAUI) {
-      return roundMoney(subtotal * 1.19);
+    if (!usarAIU) {
+      return roundMoney(calculateSubtotal() * 1.19);
     }
 
-    // 👉 CON AUI
-    const pAdmin = parseFloat(formData.porcentaje_admin) || 0;
-    const pImp = parseFloat(formData.porcentaje_imprevistos) || 0;
-    const pUtil = parseFloat(formData.porcentaje_utilidad) || 0;
-
-    const admin = roundMoney((subtotal * pAdmin) / 100);
-    const imprevistos = roundMoney((subtotal * pImp) / 100);
-    const utilidad = roundMoney((subtotal * pUtil) / 100);
-
-    const base = subtotal + admin + imprevistos + utilidad;
-    const iva = roundMoney(base * 0.19);
-
-    return roundMoney(base + iva);
+    return calculateAIU().total;
   }
 
   function formatCurrency(value) {
@@ -222,18 +263,47 @@ export default function CrearCotizacion() {
     e.preventDefault();
 
     try {
+      // =====================
+      // Preparar cálculos
+      // =====================
+      const subtotal = calculateSubtotal();
+      const aiu = usarAIU ? calculateAIU() : null;
+
+      // =====================
+      // Payload
+      // =====================
       const payload = {
         ...formData,
-        porcentaje_admin: usarAUI ? formData.porcentaje_admin : "0",
-        porcentaje_utilidad: usarAUI ? formData.porcentaje_utilidad : "0",
-        porcentaje_imprevistos: usarAUI ? formData.porcentaje_imprevistos : "0",
-        subtotal: calculateSubtotal(),
-        total: calculateTotal(),
-        iva: roundMoney(calculateTotal() - calculateSubtotal()),
+
+        porcentaje_admin: usarAIU
+          ? Number(formData.porcentaje_admin || 0)
+          : 0,
+
+        porcentaje_imprevistos: usarAIU
+          ? Number(formData.porcentaje_imprevistos || 0)
+          : 0,
+
+        porcentaje_utilidad: usarAIU
+          ? Number(formData.porcentaje_utilidad || 0)
+          : 0,
+
+        subtotal,
+
+        iva: usarAIU
+          ? roundMoney(subtotal * 0.19) + aiu.ivaUtilidad
+          : roundMoney(subtotal * 0.19),
+
+        total: usarAIU
+          ? aiu.total
+          : roundMoney(subtotal * 1.19),
+
         items,
         estado: "borrador",
       };
 
+      // =====================
+      // Guardar / Actualizar
+      // =====================
       if (esEdicion) {
         await updateCotizacion(id, payload);
         alert("Cotización actualizada correctamente");
@@ -242,7 +312,7 @@ export default function CrearCotizacion() {
       }
 
       const res = await createCotizacion(payload);
-      alert("Cotización guardada correctamente, hola a todos");
+      alert("Cotización guardada correctamente");
       navigate(`/ver-cotizacion/${res.id_cotizacion}`);
 
     } catch (error) {
@@ -254,6 +324,11 @@ export default function CrearCotizacion() {
   // =====================
   // Render
   // =====================
+  const subtotal = calculateSubtotal();
+  const aiu = usarAIU ? calculateAIU() : null;
+  const total = usarAIU
+    ? aiu.total
+    : roundMoney(subtotal * 1.19);
 
   return (
     <div className="crear-root">
@@ -262,8 +337,10 @@ export default function CrearCotizacion() {
         <button
           type="button"
           className="btn-volver"
-          onClick={() => navigate("/dashboard")}
-        >
+          onClick={() => 
+            navigate(esEdicion ? `/ver-cotizacion/${id}` : "/dashboard")
+          }
+         >
           ← Volver
         </button>
 
@@ -296,14 +373,13 @@ export default function CrearCotizacion() {
               />
             </div>
             <div className="field">
-              <label htmlFor="cliente_ciudad">Ciudad *</label>
+              <label htmlFor="cliente_ciudad">Ciudad (Opcional)</label>
               <input
                 id="cliente_ciudad"
                 name="cliente_ciudad"
                 value={formData.cliente_ciudad}
                 onChange={handleInputChange}
                 placeholder="Ej: Rivera"
-                required
               />
             </div>
           </div>
@@ -330,6 +406,83 @@ export default function CrearCotizacion() {
               required
             />
           </div>
+        </section>
+
+        {/* OPCIONES ADICIONALES */}
+        <section className="crear-card">
+          <h2 className="card-title">Opciones Adicionales (AIU)</h2>
+
+          <div className="aiu-box">
+            <label className="aiu-label">
+              <input
+                type="checkbox"
+                checked={usarAIU}
+                onChange={(e) => setUsarAIU(e.target.checked)}
+              />
+              <span>Aplicar Administración, Imprevistos y Utilidad (AIU)</span>
+            </label>
+          </div>
+
+          {usarAIU && (
+            <div className="card-grid-3">
+              <div className="field">
+                <label>% Administración</label>
+                <input
+                  type="number"
+                  name="porcentaje_admin"
+                  min="0"
+                  step="1"
+                  inputMode="numeric"
+                  value={formData.porcentaje_admin}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/^\d*$/.test(val)) {
+                      handleInputChange(e);
+                    }
+                  }}
+                  onWheel={(e) => e.target.blur()}
+                  />
+              </div>
+
+              <div className="field">
+                <label>% Imprevistos</label>
+                <input
+                  type="number"
+                  name="porcentaje_imprevistos"
+                  min="0"
+                  step="1"
+                  inputMode="numeric"
+                  value={formData.porcentaje_imprevistos}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/^\d*$/.test(val)) {
+                      handleInputChange(e);
+                    }
+                  }}
+                  onWheel={(e) => e.target.blur()}
+                  />
+              </div>
+
+              <div className="field">
+                <label>% Utilidad</label>
+                <input
+                  type="number"
+                  name="porcentaje_utilidad"
+                  min="0"
+                  step="1"
+                  inputMode="numeric"
+                  value={formData.porcentaje_utilidad}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (/^\d*$/.test(val)) {
+                      handleInputChange(e);
+                    }
+                  }}
+                  onWheel={(e) => e.target.blur()}
+                  />
+              </div>
+            </div>
+          )}
         </section>
 
         {/* ÍTEMS */}
@@ -372,32 +525,44 @@ export default function CrearCotizacion() {
                       />
                     </td>
                     <td className="col-unidad">
-                      <select
-                        value={it.unidad}
+                      <input
+                        list={`unidades-${index}`}
+                        value={it.unidad || ""}
                         onChange={(e) =>
                           handleItemChange(index, "unidad", e.target.value)
                         }
-                      >
-                        <option value="">Seleccione</option>
-                        <option value="Día">Día</option>
-                        <option value="Und">Und</option>
-                        <option value="Hr">Hr</option>
-                        <option value="m">m</option>
-                        <option value="m²">m²</option>
-                        <option value="Glb">Glb</option>
-                      </select>
+                        placeholder=""
+                        className="unidad-input"
+                      />
+
+                      <datalist id={`unidades-${index}`}>
+                        <option value="Día" />
+                        <option value="Und" />
+                        <option value="Hr" />
+                        <option value="m" />
+                        <option value="m²" />
+                        <option value="Glb" />
+                      </datalist>
                     </td>
+
                     <td className="col-number">
                       <input
                         type="number"
                         min="0"
-                        step="1"
+                        step="0.1"
                         value={it.cantidad}
                         onChange={(e) =>
                           handleItemChange(index, "cantidad", e.target.value)
                         }
+                        onWheel={(e) => e.target.blur()}
+                        onKeyDown={(e) => {
+                          if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                            e.preventDefault();
+                          }
+                        }}
                       />
                     </td>
+
                     <td className="col-number">
                       <input
                         type="number"
@@ -405,12 +570,14 @@ export default function CrearCotizacion() {
                         step="0.01"
                         value={it.valor_unitario}
                         onChange={(e) =>
-                          handleItemChange(
-                            index,
-                            "valor_unitario",
-                            e.target.value
-                          )
+                          handleItemChange(index, "valor_unitario", e.target.value)
                         }
+                        onWheel={(e) => e.target.blur()} // 🚫 rueda del mouse
+                        onKeyDown={(e) => {
+                          if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                            e.preventDefault(); // 🚫 flechas
+                          }
+                        }}
                       />
                     </td>
                     <td className="money">
@@ -431,101 +598,118 @@ export default function CrearCotizacion() {
                   </tr>
                 ))}
               </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={5} className="tfoot-label">
-                    Subtotal:
-                  </td>
-                  <td className="money">{formatCurrency(calculateSubtotal())}</td>
-                  <td />
-                </tr>
-                <tr>
-                  <td colSpan={5} className="tfoot-label">
-                    Total (con IVA 19%):
-                  </td>
-                  <td className="money total-blue">
-                    {formatCurrency(calculateTotal())}
-                  </td>
-                  <td />
-                </tr>
-              </tfoot>
+                <tfoot className="totales-box">
+
+                  {/* SUBTOTAL */}
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: "right"}} className="tfoot-label">
+                      Subtotal:
+                    </td>
+                    <td className="money">
+                      {formatCurrency(subtotal)}
+                    </td>
+                    <td />
+                  </tr>
+
+                  {/* AIU (solo si aplica) */}
+                  {usarAIU && aiu && (
+                    <>
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: "right"}} className="tfoot-label">
+                          {formData.porcentaje_admin}% Administración:
+                        </td>
+                        <td className="money">
+                          {formatCurrency(aiu.administracion)}
+                        </td>
+                        <td />
+                      </tr>
+
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: "right"}} className="tfoot-label">
+                          {formData.porcentaje_imprevistos}% Imprevistos:
+                        </td>
+                        <td className="money">
+                          {formatCurrency(aiu.imprevistos)}
+                        </td>
+                        <td />
+                      </tr>
+
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: "right"}} className="tfoot-label">
+                          {formData.porcentaje_utilidad}% Utilidad:
+                        </td>
+                        <td className="money">
+                          {formatCurrency(aiu.utilidad)}
+                        </td>
+                        <td />
+                      </tr>
+
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: "right"}} className="tfoot-label">
+                          IVA (19% Utilidad):
+                        </td>
+                        <td className="money">
+                          {formatCurrency(aiu.ivaUtilidad)}
+                        </td>
+                        <td />
+                      </tr>
+                    </>
+                  )}
+
+                  {/* IVA normal (solo SIN AIU) */}
+                  {!usarAIU && (
+                    <tr>
+                      <td colSpan={5} style={{ textAlign: "right"}} className="tfoot-label">
+                        IVA (19%):
+                      </td>
+                      <td className="money">
+                        {formatCurrency(roundMoney(subtotal * 0.19))}
+                      </td>
+                      <td />
+                    </tr>
+                  )}
+
+                  {/* TOTAL */}
+                  <tr className="total-final">
+                    <td colSpan={5} style={{ textAlign: "right"}} className="tfoot-label">
+                      TOTAL:
+                    </td>
+                    <td className="money total-blue">
+                      {formatCurrency(total)}
+                    </td>
+                    <td />
+                  </tr>
+
+                </tfoot>
             </table>
           </div>
         </section>
 
-        {/* OPCIONES ADICIONALES */}
-        <section className="crear-card">
-        <h2 className="card-title">Opciones Adicionales (AUI)</h2>
+        {/* NOTAS / OBSERVACIONES */}
+        <section className="crear-card notas-card">
+          <h2 className="card-title">Notas / Observaciones</h2>
 
-        {/* CHECKBOX */}
-        <label className="aui-toggle">
-          <input
-            type="checkbox"
-            checked={usarAUI}
-            onChange={(e) => setUsarAUI(e.target.checked)}
-          />
-          Aplicar Administración, Imprevistos y Utilidad (AUI)
-        </label>
-
-        {/* CAMPOS SOLO SI AUI ESTÁ ACTIVO */}
-        {usarAUI && (
-          <div className="card-grid-3">
-            <div className="field">
-              <label>% Administración</label>
-              <input
-                type="number"
-                name="porcentaje_admin"
-                min="0"
-                step="0.01"
-                value={formData.porcentaje_admin}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="field">
-              <label>% Imprevistos</label>
-              <input
-                type="number"
-                name="porcentaje_imprevistos"
-                min="0"
-                step="0.01"
-                value={formData.porcentaje_imprevistos}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="field">
-              <label>% Utilidad</label>
-              <input
-                type="number"
-                name="porcentaje_utilidad"
-                min="0"
-                step="0.01"
-                value={formData.porcentaje_utilidad}
-                onChange={handleInputChange}
-              />
-            </div>
+          <div className="field">
+            <label htmlFor="nota">Notas</label>
+            <textarea
+              id="nota"
+              name="nota"
+              rows={4}
+              value={formData.nota}
+              onChange={handleInputChange}
+              placeholder="Observaciones adicionales para la cotización (opcional)"
+            />
           </div>
-        )}
-
-        <div className="field" style={{ marginTop: 16 }}>
-          <label>Notas</label>
-          <textarea
-            name="nota"
-            rows={3}
-            value={formData.nota}
-            onChange={handleInputChange}
-            placeholder="Notas adicionales (opcional)"
-          />
-        </div>
-      </section>
+        </section>
 
         {/* BOTONES FINALES */}
         <div className="save-row">
           <button
             type="button"
             className="btn-cancel"
-            onClick={() => navigate("/dashboard")}
+            onClick={() => 
+              navigate(esEdicion ? `/ver-cotizacion/${id}` : "/dashboard")
+            }
           >
             Cancelar
           </button>

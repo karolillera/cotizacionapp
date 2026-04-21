@@ -1,17 +1,29 @@
-/* CONTENEDOR GENERAL */
+/**
+ * Archivo: RevisarCotizaciones.css
+ * Descripción: Estilos para la vista de revisión de cotizaciones
+ *              en estado borrador. Incluye layout general,
+ *              tarjetas, estados, acciones y carga.
+ * Autor: Karol Illera
+ */
+
+/* ============================
+   CONTENEDOR GENERAL
+=============================== */
 .rev-root {
   min-height: 100vh;
   background: linear-gradient(to bottom right, #e8f0ff, #f5faff);
   padding: 32px 16px 40px;
 }
 
-/* LIMITA TODO A 1300px */
+/* Contenedor centrado */
 .rev-container {
   max-width: 1300px;
   margin: 0 auto;
 }
 
-/* ENCABEZADO */
+/* ============================
+   ENCABEZADO
+=============================== */
 .rev-header {
   display: flex;
   align-items: center;
@@ -42,7 +54,9 @@
   color: #6b7280;
 }
 
-/* TARJETA VACÍA */
+/* ============================
+   ESTADO VACÍO
+=============================== */
 .empty-card {
   background: #ffffff;
   border-radius: 16px;
@@ -64,13 +78,16 @@
   border-radius: 8px;
   border: none;
   font-weight: 600;
+  cursor: pointer;
 }
 
 .btn-crear-primera:hover {
   background: #1e40af;
 }
 
-/* LISTA TARJETAS */
+/* ============================
+   LISTADO DE TARJETAS
+=============================== */
 .rev-list {
   display: flex;
   flex-direction: column;
@@ -84,6 +101,7 @@
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
+/* Cabecera de tarjeta */
 .rev-card-header {
   display: flex;
   justify-content: space-between;
@@ -94,15 +112,16 @@
   font-weight: 700;
 }
 
+/* Bloque derecho */
 .rev-card-right {
   text-align: right;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;   /* separa badge, total e items */
+  gap: 6px;
 }
 
-
+/* Badge estado */
 .rev-status {
   background: #fef3c7;
   color: #92400e;
@@ -112,18 +131,22 @@
   font-weight: 600;
 }
 
+/* Total */
 .rev-card-total {
   font-size: 22px;
   font-weight: 800;
   color: #2563eb;
 }
 
+/* Ítems */
 .rev-items {
   font-size: 13px;
   color: #6b7280;
 }
 
-/* BOTONES */
+/* ============================
+   ACCIONES
+=============================== */
 .rev-card-actions {
   display: flex;
   justify-content: flex-end;
@@ -131,42 +154,52 @@
   margin-top: 20px;
 }
 
+/* Botón principal */
+.rev-btn-primary {
+  background: #eef2ff;
+  color: #1e40af;
+  border: 1px solid #c7d2fe;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rev-btn-primary:hover {
+  background: #e0e7ff;
+}
+
+/* Botón outline */
 .rev-btn-outline {
   border: 1px solid #d1d5db;
   padding: 8px 16px;
   border-radius: 8px;
   background: white;
+  cursor: pointer;
 }
 
 .rev-btn-outline:hover {
   background: #f3f4f6;
 }
 
-.rev-btn-delete {
-  background: #fee2e2;
-  border: 1px solid #fecaca;
-  color: #b91c1c;
-  padding: 8px 16px;
-  border-radius: 8px;
-}
-
-.rev-btn-delete:hover {
-  background: #fecaca;
-}
-
+/* Botón finalizar */
 .rev-btn-green {
   background: #16a34a;
   color: white;
   padding: 8px 16px;
   border-radius: 8px;
   font-weight: 600;
+  cursor: pointer;
+  margin-left: auto; /* Empuja Finalizar a la derecha */
 }
 
 .rev-btn-green:hover {
   background: #15803d;
 }
 
-/* LOADING */
+/* ============================
+   LOADING
+=============================== */
 .rev-loading-screen {
   min-height: 40vh;
   display: flex;

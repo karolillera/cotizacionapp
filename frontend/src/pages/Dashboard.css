@@ -1,54 +1,29 @@
-/* TIPOGRAFÍA GENERAL */
+/**
+ * Archivo: Dashboard.css
+ * Descripción: Estilos para la vista principal (Dashboard).
+ *              Incluye topbar, tarjetas de navegación,
+ *              contenido principal y sección de contacto.
+ * Autor: Karol Illera
+ */
+
+/* ============================
+   TIPOGRAFÍA GLOBAL
+=============================== */
 * {
   font-family: 'Inter', sans-serif !important;
 }
 
-/* FONDO PRINCIPAL */
+/* ============================
+   FONDO PRINCIPAL
+=============================== */
 .dashboard-root {
   min-height: 100vh;
   background: linear-gradient(to bottom right, #e8f0ff, #f5faff);
 }
 
-/* -------------------------------------- */
-/* TOPBAR CON LOGO + TITULO DEBAJO        */
-/* -------------------------------------- */
-
-.dashboard-header {
-  height: 90px;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 60px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-}
-
-/* Agrupa logo y textos */
-.header-left {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Logo */
-.header-logo-img {
-  width: 140px;
-
-  height: auto;
-  margin-bottom: 4px;
-}
-
-/* Subtítulo debajo */
-.header-subtitle-only {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1e3a8a;
-  text-align: center;
-  margin-top: 2px;
-}
-
-/* Header general */
+/* ============================
+   TOPBAR / HEADER
+=============================== */
 .dashboard-header {
   height: 110px;
   background: white;
@@ -59,7 +34,31 @@
   box-shadow: 0 2px 6px rgba(0,0,0,0.06);
 }
 
-/* Right side */
+/* Bloque izquierdo: logo + subtítulo */
+.header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Logo institucional */
+.header-logo-img {
+  width: 140px;
+  height: auto;
+  margin-bottom: 4px;
+}
+
+/* Subtítulo bajo el logo */
+.header-subtitle-only {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e3a8a;
+  text-align: center;
+  margin-top: 2px;
+}
+
+/* Bloque derecho: usuario + logout */
 .header-right {
   display: flex;
   align-items: center;
@@ -67,6 +66,7 @@
   font-size: 15px;
 }
 
+/* Botón cerrar sesión */
 .logout-button {
   border: 1px solid #d1d5db;
   background: white;
@@ -80,17 +80,16 @@
   background: #f3f4f6;
 }
 
-/* -------------------------------------- */
-/* CONTENIDO PRINCIPAL                    */
-/* -------------------------------------- */
-
+/* ============================
+   CONTENIDO PRINCIPAL
+=============================== */
 .dashboard-content {
   max-width: 1350px;
   margin: 0 auto;
   padding: 40px 40px;
 }
 
-/* Títulos */
+/* Títulos principales */
 .dashboard-title-section h1 {
   font-size: 32px;
   font-weight: 700;
@@ -103,7 +102,9 @@
   margin-bottom: 28px;
 }
 
-/* TARJETAS DEL MENU */
+/* ============================
+   TARJETAS DEL MENÚ
+=============================== */
 .dashboard-cards-grid {
   display: flex;
   justify-content: space-between;
@@ -127,6 +128,7 @@
   box-shadow: 0 12px 26px rgba(0,0,0,0.12);
 }
 
+/* Iconos de tarjetas */
 .card-icon {
   width: 40px;
   height: 40px;
@@ -139,11 +141,13 @@
   margin-bottom: 16px;
 }
 
-.card-icon-green { background: #16a34a; }
+.card-icon-green  { background: #16a34a; }
 .card-icon-yellow { background: #eab308; }
-.card-icon-blue { background: #2563eb; }
+.card-icon-blue   { background: #2563eb; }
 
-/* CONTACTO */
+/* ============================
+   CONTACTO / SOPORTE
+=============================== */
 .dashboard-contact {
   display: flex;
   justify-content: center;
@@ -159,8 +163,17 @@
   max-width: 450px;
 }
 
+.contact-card h3 {
+  margin-bottom: 12px;
+}
+
 .contact-card p {
   margin: 0;
   font-size: 14px;
   color: #4b5563;
+}
+
+.contact-name {
+  margin-top: 8px;
+  font-weight: 600;
 }

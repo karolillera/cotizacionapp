@@ -1,5 +1,5 @@
 
-const API_URL = `${window.location.protocol}//${window.location.hostname}:${import.meta.env.VITE_API_PORT}${import.meta.env.VITE_API_PATH}`;
+export const API_URL = `${window.location.protocol}//${window.location.hostname}:${import.meta.env.VITE_API_PORT}${import.meta.env.VITE_API_PATH}`;
 
 
 // =======================================
@@ -54,7 +54,7 @@ export async function finalizarCotizacion(id) {
 
 // Obtener PDF (NO descarga nada aquí)
 export async function downloadPDF(id) {
-  const res = await fetch(`${API_URL}/cotizaciones/${id}/pdf`);
+  const res = await fetch(`${API_URL}/cotizaciones/${id}/preview`);
   if (!res.ok) throw new Error("Error obteniendo PDF");
 
   // Backend retorna { path, nombre }

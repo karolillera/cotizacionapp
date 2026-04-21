@@ -1,7 +1,17 @@
-﻿const express = require("express");
+﻿/**
+ * Archivo: cotizaciones.js
+ * Descripción: Define las rutas y la lógica del backend para la gestión
+ *              de cotizaciones. Permite crear, consultar, actualizar,
+ *              eliminar, finalizar cotizaciones y generar o previsualizar
+ *              sus documentos PDF asociados.
+ * Autor: Karol Illera
+ */
+
+const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const { generarPDF } = require("../utils/pdfGenerator");
+
 
 // ==================================================
 // FUNCIÓN PARA GENERAR AAMMCC
@@ -94,43 +104,100 @@ router.get("/:id", async (req, res) => {
 // ==================================================
 // POST /cotizaciones  (crear nueva)
 // ==================================================
+
 router.post("/", async (req, res) => {
   const {
     cliente_nombre, cliente_direccion, cliente_ciudad,
-    referencia, subtotal, iva, total,
-    porcentaje_admin, porcentaje_utilidad, iva_utilidad,
+    referencia,
+    porcentaje_admin, porcentaje_imprevistos, porcentaje_utilidad,
     nota, estado, items
   } = req.body;
+
+  console.log("📥 Payload recibido en POST /cotizaciones:");
+  console.log(JSON.stringify(req.body, null, 2));
 
   try {
     await db.query("BEGIN");
 
-    // 🔥 GENERAR NUMERO AAMMCC PARA ESTA COTIZACIÓN
+    // =========================
+    // CALCULAR TOTALES EN BACKEND
+    // =========================
+    const subtotal = items.reduce(
+      (acc, it) => acc + Number(it.cantidad) * Number(it.valor_unitario),
+      0
+    );
+
+    const pAdmin = Number(porcentaje_admin || 0);
+    const pImp   = Number(porcentaje_imprevistos || 0);
+    const pUtil  = Number(porcentaje_utilidad || 0);
+
+    const usarAIU = pAdmin > 0 || pImp > 0 || pUtil > 0;
+
+    const valor_admin       = usarAIU ? subtotal * pAdmin / 100 : 0;
+    const valor_imprevistos = usarAIU ? subtotal * pImp / 100 : 0;
+    const valor_utilidad    = usarAIU ? subtotal * pUtil / 100 : 0;
+
+    const valor_iva = usarAIU
+      ? valor_utilidad * 0.19
+      : subtotal * 0.19;
+
+    let total;
+
+    if (usarAIU) {
+      total =
+        subtotal +
+        valor_admin +
+        valor_imprevistos +
+        valor_utilidad +
+        valor_iva;
+    } else {
+      total = subtotal + valor_iva;
+    }
+
     const numero_cotizacion = await generarNumeroCotizacion();
 
     const insertCot = `
-      INSERT INTO cotizaciones (
-        cliente_nombre, cliente_direccion, cliente_ciudad,
-        referencia, subtotal, iva, total,
-        porcentaje_admin, porcentaje_utilidad, iva_utilidad,
-        nota, estado, numero_cotizacion
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-      RETURNING id_cotizacion
+    INSERT INTO cotizaciones (
+      cliente_nombre, cliente_direccion, cliente_ciudad,
+      referencia,
+      subtotal,
+      valor_admin,
+      valor_imprevistos,
+      valor_utilidad,
+      valor_iva,
+      total,
+      porcentaje_admin,
+      porcentaje_imprevistos,
+      porcentaje_utilidad,
+      nota,
+      estado,
+      numero_cotizacion
+    )
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+    RETURNING id_cotizacion
     `;
 
     const result = await db.query(insertCot, [
-      cliente_nombre, cliente_direccion, cliente_ciudad,
-      referencia, subtotal, iva, total,
-      porcentaje_admin, porcentaje_utilidad, iva_utilidad,
-      nota || null, estado || "borrador",
+      cliente_nombre,
+      cliente_direccion,
+      cliente_ciudad,
+      referencia,
+      subtotal,
+      valor_admin,
+      valor_imprevistos,
+      valor_utilidad,
+      valor_iva,
+      total,
+      pAdmin,
+      pImp,
+      pUtil,
+      nota || null,
+      estado || "borrador",
       numero_cotizacion
     ]);
 
     const idCot = result.rows[0].id_cotizacion;
 
-    // ==========================
-    // Insertar Ítems
-    // ==========================
     if (items && items.length > 0) {
       const insertItem = `
       INSERT INTO cotizacion_items (
@@ -215,7 +282,7 @@ router.patch("/:id/finalizar", async (req, res) => {
       [id]
     );
 
-    const pdfPath = await generarPDF(id);
+    const pdfPath = await generarPDF(id, { force:true});
 
     res.json({
       success: true,
@@ -232,87 +299,164 @@ router.patch("/:id/finalizar", async (req, res) => {
 // ==================================================
 // GET /cotizaciones/:id/pdf
 // ==================================================
+const path = require("path");
+
 router.get("/:id/pdf", async (req, res) => {
   try {
-    // 1️⃣ GENERAR PDF Y OBTENER RUTA FINAL
     const filePath = await generarPDF(req.params.id);
 
-    // 2️⃣ CONSULTAR LA COTIZACIÓN PARA ARMAR EL NOMBRE
-    const { rows } = await db.query(
-      "SELECT numero_cotizacion, id_cotizacion, referencia FROM cotizaciones WHERE id_cotizacion=$1",
-      [req.params.id]
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${path.basename(filePath)}"`
     );
-    const cot = rows[0];
 
-    const nombreArchivo = `${cot.numero_cotizacion || cot.id_cotizacion} - ${cot.referencia}.pdf`
-      .replace(/[^\w\s.-]/gi, "_");
-
-    // 3️⃣ DEVOLVER SOLO LA RUTA Y NOMBRE — SIN DESCARGA
-    res.json({
-      success: true,
-      path: filePath,
-      nombre: nombreArchivo
-    });
+    return res.sendFile(filePath);
 
   } catch (err) {
     console.error("❌ Error PDF:", err);
-    res.status(500).json({ error: "Error al generar PDF" });
+    res.status(500).json({ error: "Error mostrando PDF" });
   }
 });
 
-module.exports = router;
 
+// ==================================================
+// GET /cotizaciones/:id/preview   (vista tipo Canva)
+// ==================================================
+router.get("/:id/preview", async (req, res) => {
+  try {
+    const { id } = req.params;
 
+    // 1) Buscar cotización
+    const r = await db.query(
+      "SELECT id_cotizacion, numero_cotizacion, referencia FROM cotizaciones WHERE id_cotizacion=$1",
+      [id]
+    );
 
+    if (r.rowCount === 0) {
+      return res.status(404).send("Cotización no encontrada");
+    }
 
+    let cot = r.rows[0];
 
+    // 2) Si NO tiene número, generarlo y guardarlo (también en borrador)
+    if (!cot.numero_cotizacion) {
+      const nuevoNumero = await generarNumeroCotizacion();
+
+      await db.query(
+        "UPDATE cotizaciones SET numero_cotizacion=$1 WHERE id_cotizacion=$2",
+        [nuevoNumero, id]
+      );
+
+      cot.numero_cotizacion = nuevoNumero;
+    }
+
+    // 3) Generar PDF (force para que siempre actualice el borrador)
+    const filePath = await generarPDF(id, { force: true });
+
+    const referenciaLimpia = (cot.referencia || "SIN_REFERENCIA")
+      .replace(/[<>:"/\\|?*]/g, "_");
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${cot.numero_cotizacion} ${referenciaLimpia}.pdf"`
+    );
+
+    return res.sendFile(filePath);
+
+  } catch (err) {
+    console.error("❌ Error preview PDF:", err);
+    res.status(500).send("Error mostrando PDF");
+  }
+});
 
 
 // ==================================================
-// PUT /cotizaciones/:id  (editar cotización)
+// PUT /cotizaciones/:id
+// yyy  (editar cotización)
 // ==================================================
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
   const {
     cliente_nombre, cliente_direccion, cliente_ciudad,
-    referencia, subtotal, iva, total,
-    porcentaje_admin, porcentaje_utilidad, iva_utilidad,
+    referencia, 
+    porcentaje_admin, porcentaje_imprevistos, porcentaje_utilidad, iva_utilidad,
     nota, items
   } = req.body;
 
   try {
     await db.query("BEGIN");
 
+    const subtotal = items.reduce(
+      (acc, it) => acc + Number(it.cantidad) * Number(it.valor_unitario),
+      0
+    );
+
+    const pAdmin = Number(porcentaje_admin || 0);
+    const pImp   = Number(porcentaje_imprevistos || 0);
+    const pUtil  = Number(porcentaje_utilidad || 0);
+
+    const usarAIU = pAdmin > 0 || pImp > 0 || pUtil > 0;
+
+    const valor_admin       = usarAIU ? subtotal * pAdmin / 100 : 0;
+    const valor_imprevistos = usarAIU ? subtotal * pImp / 100 : 0;
+    const valor_utilidad    = usarAIU ? subtotal * pUtil / 100 : 0;
+
+    const valor_iva = usarAIU
+      ? valor_utilidad * 0.19
+      : subtotal * 0.19;
+
+    let total;
+
+    if (usarAIU) {
+
+      total =
+        subtotal +
+        valor_admin +
+        valor_imprevistos +
+        valor_utilidad +
+        valor_iva; // IVA sobre utilidad
+    } else {
+      total = subtotal + valor_iva;
+    }
+
+
     // Actualizar cabecera
-    await db.query(
-      `UPDATE cotizaciones SET
+    await db.query(`
+      UPDATE cotizaciones SET
         cliente_nombre=$1,
         cliente_direccion=$2,
         cliente_ciudad=$3,
         referencia=$4,
         subtotal=$5,
-        iva=$6,
-        total=$7,
-        porcentaje_admin=$8,
-        porcentaje_utilidad=$9,
-        iva_utilidad=$10,
-        nota=$11
-       WHERE id_cotizacion=$12`,
-      [
-        cliente_nombre,
-        cliente_direccion,
-        cliente_ciudad,
-        referencia,
-        subtotal,
-        iva,
-        total,
-        porcentaje_admin,
-        porcentaje_utilidad,
-        iva_utilidad,
-        nota || null,
-        id
-      ]
-    );
+        valor_admin=$6,
+        valor_imprevistos=$7,
+        valor_utilidad=$8,
+        valor_iva=$9,
+        total=$10,
+        porcentaje_admin=$11,
+        porcentaje_imprevistos=$12,
+        porcentaje_utilidad=$13,
+        nota=$14
+      WHERE id_cotizacion=$15
+    `, [
+      cliente_nombre,
+      cliente_direccion,
+      cliente_ciudad,
+      referencia,
+      subtotal,
+      valor_admin,
+      valor_imprevistos,
+      valor_utilidad,
+      valor_iva,
+      total,
+      pAdmin,
+      pImp,
+      pUtil,
+      nota || null,
+      id
+    ]);
 
     // Borrar ítems actuales
     await db.query(
@@ -348,3 +492,5 @@ router.put("/:id", async (req, res) => {
     res.status(500).json({ error: "Error editando cotización" });
   }
 });
+
+module.exports = router;

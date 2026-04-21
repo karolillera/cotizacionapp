@@ -1,4 +1,14 @@
-/* Fondo general del login */
+/**
+ * Archivo: Login.css
+ * Descripción: Estilos para la vista de inicio de sesión.
+ *              Define el fondo, la tarjeta de acceso,
+ *              formulario y comportamiento responsivo.
+ * Autor: Karol Illera
+ */
+
+/* ============================
+   CONTENEDOR GENERAL
+=============================== */
 .login-container {
   height: 100vh;
   background: linear-gradient(to bottom right, #e8f0ff, #f5faff);
@@ -8,7 +18,9 @@
   padding: 20px;
 }
 
-/* Tarjeta */
+/* ============================
+   TARJETA DE LOGIN
+=============================== */
 .login-card {
   width: 420px;
   background: white;
@@ -18,14 +30,18 @@
   text-align: center;
 }
 
-/* Logo */
+/* ============================
+   LOGO
+=============================== */
 .login-logo {
   width: 155px;
   margin: 0 auto 6px auto;
   display: block;
 }
 
-/* Títulos */
+/* ============================
+   TÍTULOS
+=============================== */
 .login-title {
   font-size: 26px;
   font-weight: 800;
@@ -39,7 +55,9 @@
   margin-bottom: 25px;
 }
 
-/* Inputs */
+/* ============================
+   FORMULARIO
+=============================== */
 form label {
   font-size: 14px;
   font-weight: 600;
@@ -57,7 +75,9 @@ form input {
   font-size: 14px;
 }
 
-/* Botón */
+/* ============================
+   BOTÓN DE ACCESO
+=============================== */
 form button {
   width: 100%;
   background: #1a54dd;
@@ -75,7 +95,9 @@ form button:hover {
   background: #0f3bb5;
 }
 
-/* Responsivo */
+/* ============================
+   RESPONSIVE
+=============================== */
 @media (max-width: 500px) {
   .login-card {
     width: 100%;
